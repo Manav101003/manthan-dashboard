@@ -19,7 +19,7 @@ function showNoticeForm() {
     <form class="modal-form" onsubmit="saveNotice(event)">
         <div class="form-group"><label>Title *</label><input id="nc_title" required></div>
         <div class="form-group"><label>Description *</label><textarea id="nc_desc" rows="4" required></textarea></div>
-        <div class="form-row"><div class="form-group"><label>Audience</label><select id="nc_aud"><option>All</option><option>Students</option><option>Teachers</option></select></div><div class="form-group"><label>Priority</label><select id="nc_pri"><option>Normal</option><option>Important</option><option>Urgent</option></select></div></div>
+        <div class="form-row"><div class="form-group"><label>Audience</label><select id="nc_aud"><option>All</option><option>Students</option></select></div><div class="form-group"><label>Priority</label><select id="nc_pri"><option>Normal</option><option>Important</option><option>Urgent</option></select></div></div>
         <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary">Publish</button></div>
     </form>`);
 }
@@ -42,8 +42,8 @@ async function loadTimetable() {
                 ${currentUser.role==='admin'?'<button class="btn btn-primary" onclick="showTimetableForm()"><i class="fas fa-plus"></i> Add</button>':''}
             </div>
         </div>
-        <div class="data-table-container"><table id="timetableTable"><thead><tr><th>Day</th><th>Batch</th><th>Subject</th><th>Time</th><th>Teacher</th><th>Room</th></tr></thead>
-        <tbody>${list.map(t=>`<tr data-batch="${t.BatchId}"><td><strong>${t.Day}</strong></td><td>${t.BatchName||'-'}</td><td>${t.Subject||'-'}</td><td>${t.StartTime?.substring(0,5)} - ${t.EndTime?.substring(0,5)}</td><td>${t.TeacherName||'-'}</td><td>${t.Room||'-'}</td></tr>`).join('')}</tbody></table></div>`;
+        <div class="data-table-container"><table id="timetableTable"><thead><tr><th>Day</th><th>Batch</th><th>Subject</th><th>Time</th><th>Room</th></tr></thead>
+        <tbody>${list.map(t=>`<tr data-batch="${t.BatchId}"><td><strong>${t.Day}</strong></td><td>${t.BatchName||'-'}</td><td>${t.Subject||'-'}</td><td>${t.StartTime?.substring(0,5)} - ${t.EndTime?.substring(0,5)}</td><td>${t.Room||'-'}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 function filterTimetable(batchId) {
@@ -51,21 +51,20 @@ function filterTimetable(batchId) {
 }
 
 function showTimetableForm() {
-    Promise.all([api('/api/batches'),api('/api/teachers')]).then(([batches,teachers])=>{
-        const bl=Array.isArray(batches)?batches:[];const tl=Array.isArray(teachers)?teachers:[];
+    api('/api/batches').then(function(batches){
+        const bl=Array.isArray(batches)?batches:[];
         openModal(`<div class="modal-header"><h2>Add Timetable Entry</h2><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
         <form class="modal-form" onsubmit="saveTimetable(event)">
             <div class="form-row"><div class="form-group"><label>Batch *</label><select id="tte_batch">${bl.map(b=>`<option value="${b.BatchId}">${b.BatchName}</option>`).join('')}</select></div>
             <div class="form-group"><label>Day *</label><select id="tte_day">${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d=>`<option>${d}</option>`).join('')}</select></div></div>
             <div class="form-row"><div class="form-group"><label>Subject</label><input id="tte_subj"></div><div class="form-group"><label>Room</label><input id="tte_room"></div></div>
             <div class="form-row"><div class="form-group"><label>Start Time *</label><input type="time" id="tte_start" required></div><div class="form-group"><label>End Time *</label><input type="time" id="tte_end" required></div></div>
-            <div class="form-group"><label>Teacher</label><select id="tte_teacher"><option value="">Select</option>${tl.map(t=>`<option value="${t.TeacherId}">${t.Name}</option>`).join('')}</select></div>
             <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary">Add</button></div>
         </form>`);
     });
 }
 
-async function saveTimetable(e){e.preventDefault();const r=await post('/api/timetable',{BatchId:$('tte_batch').value,Day:$('tte_day').value,Subject:$('tte_subj').value,StartTime:$('tte_start').value,EndTime:$('tte_end').value,TeacherId:$('tte_teacher').value||null,Room:$('tte_room').value});if(r.success){toast('Entry added');closeModal();loadTimetable();}else toast('Error','error');}
+async function saveTimetable(e){e.preventDefault();const r=await post('/api/timetable',{BatchId:$('tte_batch').value,Day:$('tte_day').value,Subject:$('tte_subj').value,StartTime:$('tte_start').value,EndTime:$('tte_end').value,Room:$('tte_room').value});if(r.success){toast('Entry added');closeModal();loadTimetable();}else toast('Error','error');}
 
 // ═══ Reports Page ═══
 async function loadReports() {
@@ -85,7 +84,7 @@ async function loadReports() {
 async function generateReport(type) {
     let html = '';
     if (type==='attendance') {
-        const data = await api('/api/attendance?date='+new Date().toISOString().split('T')[0]);
+        const data = await api('/api/attendance?date='+localDateStr());
         const list = Array.isArray(data)?data:[];
         const p=list.filter(a=>a.Status==='Present').length, ab=list.filter(a=>a.Status==='Absent').length;
         html = `<h3>Today's Attendance</h3><div class="perf-grid"><div class="perf-card"><div class="perf-value" style="color:var(--success)">${p}</div><div class="perf-label">Present</div></div><div class="perf-card"><div class="perf-value" style="color:var(--danger)">${ab}</div><div class="perf-label">Absent</div></div><div class="perf-card"><div class="perf-value">${list.length?Math.round(p/list.length*100):0}%</div><div class="perf-label">Rate</div></div></div>`;
@@ -109,27 +108,61 @@ async function generateReport(type) {
     } else {
         const data = await api('/api/batches');
         const list = Array.isArray(data)?data:[];
-        html = `<h3>Batch Performance</h3><table><thead><tr><th>Batch</th><th>Class</th><th>Students</th><th>Teacher</th><th>Fee/Month</th></tr></thead><tbody>${list.map(b=>`<tr><td>${b.BatchName}</td><td>${b.Class}</td><td>${b.StudentCount||0}</td><td>${b.TeacherName||'-'}</td><td>${formatCurrency(b.MonthlyFee)}</td></tr>`).join('')}</tbody></table>`;
+        html = `<h3>Batch Performance</h3><table><thead><tr><th>Batch</th><th>Class</th><th>Students</th><th>Fee/Month</th></tr></thead><tbody>${list.map(b=>`<tr><td>${b.BatchName}</td><td>${b.Class}</td><td>${b.StudentCount||0}</td><td>${formatCurrency(b.MonthlyFee)}</td></tr>`).join('')}</tbody></table>`;
     }
     $('reportOutput').innerHTML = `<div class="data-table-container" style="padding:20px">${html}<div style="margin-top:16px"><button class="btn btn-outline" onclick="window.print()"><i class="fas fa-print"></i> Print</button></div></div>`;
 }
 
 // ═══ Settings Page ═══
+function settingsEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 async function loadSettings() {
     const settings = await api('/api/settings');
     $('contentArea').innerHTML = `
-        <div class="section-header"><div class="section-title"><i class="fas fa-cog"></i> Institute Settings</div></div>
+        <div class="section-header"><div class="section-title"><i class="fas fa-cog"></i> Settings</div></div>
+        <div class="data-table-container" style="padding:24px;margin-bottom:20px">
+            <h3 style="margin-bottom:16px"><i class="fas fa-school" style="color:var(--accent)"></i> Institute Details</h3>
+            <form onsubmit="saveInstituteSettings(event)">
+                <div class="modal-form">
+                    <div class="form-group"><label>Institute Name</label><input id="set_name" value="${settingsEsc(settings.instituteName)}"></div>
+                    <div class="form-row"><div class="form-group"><label>Phone</label><input id="set_phone" value="${settingsEsc(settings.phone)}"></div><div class="form-group"><label>Email</label><input id="set_email" value="${settingsEsc(settings.email)}"></div></div>
+                    <div class="form-group"><label>Address</label><input id="set_address" value="${settingsEsc(settings.address)}"></div>
+                    <div class="form-group"><label>Classes Offered</label><input value="${(settings.classes || []).join(', ')}" readonly></div>
+                </div>
+                <div class="modal-actions" style="justify-content:flex-start"><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Details</button></div>
+            </form>
+        </div>
         <div class="data-table-container" style="padding:24px">
-            <div class="modal-form">
-                <div class="form-group"><label>Institute Name</label><input value="${settings.instituteName||''}" readonly></div>
-                <div class="form-row"><div class="form-group"><label>Phone</label><input value="${settings.phone||''}"></div><div class="form-group"><label>Email</label><input value="${settings.email||''}"></div></div>
-                <div class="form-group"><label>Address</label><input value="${settings.address||''}"></div>
-                <div class="form-group"><label>Classes Offered</label><input value="${(settings.classes||[]).join(', ')}" readonly></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+                <h3 style="margin:0"><i class="fas fa-qrcode" style="color:var(--accent)"></i> Fee Payment QR</h3>
+                <button class="btn btn-primary" onclick="showPaymentSettings()"><i class="fas fa-pen"></i> Edit Payment QR / UPI</button>
             </div>
-            <hr style="border-color:var(--border);margin:24px 0">
-            <h3 style="margin-bottom:16px"><i class="fas fa-database" style="color:var(--accent)"></i> Database</h3>
-            <div class="section-actions"><button class="btn btn-success"><i class="fas fa-download"></i> Backup Database</button><button class="btn btn-warning"><i class="fas fa-upload"></i> Restore Database</button></div>
+            <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+                <div style="text-align:center">
+                    ${settings.qrImage
+                        ? '<img src="' + settings.qrImage + '" class="qr-image">'
+                        : '<div class="qr-placeholder"><i class="fas fa-qrcode"></i><p>No QR uploaded</p><small>Upload your GPay / PhonePe QR</small></div>'}
+                </div>
+                <div style="flex:1;min-width:220px">
+                    <div class="settings-row"><span>UPI ID</span><strong>${settings.upiId ? settingsEsc(settings.upiId) : '<span style="color:var(--text-muted);font-weight:400">Not set</span>'}</strong></div>
+                    <div class="settings-row"><span>Display Name</span><strong>${settingsEsc(settings.upiName || '-')}</strong></div>
+                    <p style="color:var(--text-muted);font-size:.8rem;margin-top:12px">Students see this QR on their Pay Fees page. Upload a screenshot of the QR from GPay/PhonePe, and optionally add your UPI ID so the pay buttons work.</p>
+                </div>
+            </div>
         </div>`;
+}
+
+async function saveInstituteSettings(e) {
+    e.preventDefault();
+    const r = await post('/api/settings', {
+        instituteName: $('set_name').value,
+        phone: $('set_phone').value,
+        email: $('set_email').value,
+        address: $('set_address').value
+    });
+    if (r.success) toast('Settings saved'); else toast(r.error || 'Error saving', 'error');
 }
 
 // ═══ Data Export ═══

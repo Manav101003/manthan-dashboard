@@ -1,3 +1,10 @@
 node_modules/
 .env
 *.log
+.DS_Store
+
+# Ignore uploaded user files but preserve upload directories
+public/uploads/tests/*
+!public/uploads/tests/.gitkeep
+public/uploads/qr/*
+!public/uploads/qr/.gitkeep

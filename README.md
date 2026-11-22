@@ -23,6 +23,25 @@ A small coaching/tutor management app built with Node.js, Express, PostgreSQL an
 - Node.js 18+
 - PostgreSQL 12+
 
+## Backend Architecture (MVC Pattern)
+
+The backend is structured using the Model-View-Controller (MVC) architectural pattern:
+
+```
+server/
+├── config/              # Database pool and connection configuration
+├── models/              # Data access models (queries, schema operations, and persistence)
+├── views/               # Data normalization, column casing mapping, and JSON response views
+├── controllers/         # Request handling, orchestration, validation, and responses
+├── routes/              # Express API route definitions mounted under /api
+├── middlewares/         # Multer file upload middlewares (tests, QR codes)
+├── services/            # Real-time WebSocket services (Socket.IO notifications & events)
+├── utils/               # Constants and helper functions
+├── db.js                # Database connection export (backwards-compatible)
+├── migrate.js           # Database migrations
+└── server.js            # Express server initialization and middleware configuration
+```
+
 ## Setup
 
 1. Install dependencies:
@@ -90,6 +109,35 @@ npm run build
 ```
 
 `npm start` and `npm run dev` run the build automatically (`prestart` / `predev`).
+
+## Deployment
+
+### Option 1: Docker / Docker Compose (Recommended)
+
+1. Review and configure `.env` (refer to `.env.example`).
+2. Run the full stack (PostgreSQL + App) with Docker Compose:
+   ```bash
+   docker compose up -d --build
+   ```
+3. Open `http://localhost:3000`. Persistent database data is stored in the `pgdata` volume and uploads in `uploads_data`.
+
+### Option 2: Cloud PaaS (Render, Railway, Fly.io, Heroku)
+
+1. Provision a PostgreSQL instance on your cloud provider (e.g. Render Postgres, Railway Postgres, Neon, or Supabase).
+2. Set the following environment variables:
+   - `DATABASE_URL`: Connection string provided by your database host (e.g. `postgresql://...`).
+   - `SESSION_SECRET`: A long random string.
+   - `NODE_ENV`: `production`.
+   - `TRUST_PROXY`: `true`.
+3. Set the build command:
+   ```bash
+   npm install && npm run build
+   ```
+4. Set the start command:
+   ```bash
+   npm start
+   ```
+   *Note: Database migrations run automatically on start via `server/migrate.js`, and health checks are available at `/health`.*
 
 ## Database migrations
 

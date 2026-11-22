@@ -5,7 +5,10 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
+    "prestart": "node scripts/build.js",
     "dev": "node server/server.js",
+    "predev": "node scripts/build.js",
+    "build": "node scripts/build.js",
     "setup-db": "node server/setup-db.js"
   },
   "dependencies": {

@@ -25,33 +25,67 @@ async function loadDashboard() {
         return '<div class="activity-item"><div class="activity-icon ' + a.type + '"><i class="fas fa-' + icon + '"></i></div><div class="activity-info"><h4>' + a.title + '</h4><p>' + a.description + '</p></div></div>';
     }).join('') : '<div class="empty-state"><p>No recent activity</p></div>';
 
-    $('contentArea').innerHTML = '<div class="stats-grid">' +
+    var hour = new Date().getHours();
+    var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    var hero = '<div class="page-hero">' +
+        '<div><h1>' + greeting + ', ' + (currentUser.username ? currentUser.username.charAt(0).toUpperCase() + currentUser.username.slice(1) : 'Administrator') + '</h1>' +
+        '<p>Here is what is happening at your institute today.</p></div>' +
+        '<div class="hero-actions">' +
+            '<button class="btn btn-primary" onclick="showStudentForm()"><i class="fas fa-user-plus" aria-hidden="true"></i> Add Student</button>' +
+            '<button class="btn btn-outline" onclick="navigate(\'attendance\')"><i class="fas fa-calendar-check" aria-hidden="true"></i> Mark Attendance</button>' +
+            '<button class="btn btn-outline" onclick="showTestForm()"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Create Test</button>' +
+        '</div></div>';
+
+    var feeChartHtml = (charts.feeData && charts.feeData.length)
+        ? '<div class="chart-wrapper"><canvas id="feeChart"></canvas></div>'
+        : '<div class="chart-empty"><i class="fas fa-chart-bar"></i><strong>No fee records yet</strong><span>Add a fee record to see collection trends.</span></div>';
+    var classChartHtml = (charts.classDistribution && charts.classDistribution.length)
+        ? '<div class="chart-wrapper"><canvas id="classChart"></canvas></div>'
+        : '<div class="chart-empty"><i class="fas fa-chart-pie"></i><strong>No students yet</strong><span>Add students to see the class distribution.</span></div>';
+
+    $('contentArea').innerHTML = hero + '<div class="stats-grid stats-6">' +
         '<div class="stat-card" onclick="navigate(\'students\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-user-graduate"></i></div><span class="stat-card-label">Total Students</span></div><div class="stat-card-value">' + (stats.totalStudents||0) + '</div><div class="stat-card-change"><i class="fas fa-arrow-up"></i> Active enrollments</div></div>' +
-        '<div class="stat-card" onclick="navigate(\'teachers\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-chalkboard-teacher"></i></div><span class="stat-card-label">Total Teachers</span></div><div class="stat-card-value">' + (stats.totalTeachers||0) + '</div><div class="stat-card-change"><i class="fas fa-check"></i> All active</div></div>' +
-        '<div class="stat-card" onclick="navigate(\'fees\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-rupee-sign"></i></div><span class="stat-card-label">Pending Fees</span></div><div class="stat-card-value">' + formatCurrency(stats.pendingFees) + '</div><div class="stat-card-change negative"><i class="fas fa-exclamation-triangle"></i> Needs attention</div></div>' +
+        '<div class="stat-card" onclick="navigate(\'batches\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-layer-group"></i></div><span class="stat-card-label">Total Batches</span></div><div class="stat-card-value">' + (stats.totalBatches||0) + '</div><div class="stat-card-change"><i class="fas fa-check"></i> All active</div></div>' +
+        '<div class="stat-card" onclick="navigate(\'fees\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-rupee-sign"></i></div><span class="stat-card-label">Pending Fees</span></div><div class="stat-card-value">' + formatCurrency(stats.pendingFees) + '</div><div class="stat-card-change' + (+stats.pendingFees > 0 ? ' negative' : '') + '"><i class="fas fa-' + (+stats.pendingFees > 0 ? 'exclamation-triangle' : 'check') + '"></i> ' + (+stats.pendingFees > 0 ? 'Needs attention' : 'All clear') + '</div></div>' +
         '<div class="stat-card" onclick="navigate(\'fees\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-wallet"></i></div><span class="stat-card-label">Monthly Collection</span></div><div class="stat-card-value">' + formatCurrency(stats.monthlyCollection) + '</div><div class="stat-card-change"><i class="fas fa-chart-line"></i> This month</div></div>' +
         '<div class="stat-card" onclick="navigate(\'tests\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-clipboard-list"></i></div><span class="stat-card-label">Upcoming Tests</span></div><div class="stat-card-value">' + (stats.upcomingTests||0) + '</div><div class="stat-card-change"><i class="fas fa-calendar"></i> Scheduled</div></div>' +
-        '<div class="stat-card" onclick="navigate(\'attendance\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-calendar-check"></i></div><span class="stat-card-label">Today\'s Attendance</span></div><div class="stat-card-value">' + (stats.attendancePercentage||0) + '%</div><div class="stat-card-change ' + (stats.attendancePercentage<75?'negative':'') + '"><i class="fas fa-' + (stats.attendancePercentage>=75?'check':'exclamation-triangle') + '"></i> ' + (stats.attendancePercentage>=75?'Good':'Low') + '</div></div>' +
+        '<div class="stat-card" onclick="navigate(\'attendance\')"><div class="stat-card-header"><div class="stat-card-icon"><i class="fas fa-calendar-check"></i></div><span class="stat-card-label">Today\'s Attendance</span></div><div class="stat-card-value">' + (stats.attendanceMarked ? (stats.attendancePercentage||0) + '%' : '—') + '</div><div class="stat-card-change ' + (stats.attendanceMarked && stats.attendancePercentage<75?'negative':'') + '"><i class="fas fa-' + (!stats.attendanceMarked ? 'minus' : stats.attendancePercentage>=75?'check':'exclamation-triangle') + '"></i> ' + (!stats.attendanceMarked ? 'Not marked yet' : stats.attendancePercentage>=75?'Good':'Low') + '</div></div>' +
     '</div>' +
     '<div class="charts-grid">' +
-        '<div class="chart-card"><h3><i class="fas fa-chart-bar"></i> Fee Collection Overview</h3><div class="chart-wrapper"><canvas id="feeChart"></canvas></div></div>' +
-        '<div class="chart-card"><h3><i class="fas fa-chart-line"></i> Attendance Trend</h3><div class="chart-wrapper"><canvas id="attendanceChart"></canvas></div></div>' +
+        '<div class="chart-card"><h3><i class="fas fa-chart-bar"></i> Fee Collection Overview</h3>' + feeChartHtml + '</div>' +
+        '<div class="chart-card"><h3><i class="fas fa-chart-pie"></i> Class Distribution</h3>' + classChartHtml + '</div>' +
     '</div>' +
     '<div class="charts-grid">' +
-        '<div class="chart-card"><h3><i class="fas fa-chart-pie"></i> Class Distribution</h3><div class="chart-wrapper"><canvas id="classChart"></canvas></div></div>' +
         '<div class="chart-card"><h3><i class="fas fa-clipboard-list"></i> Upcoming Tests</h3><div class="upcoming-list">' + testsHtml + '</div></div>' +
-    '</div>' +
-    '<div class="charts-grid"><div class="chart-card"><h3><i class="fas fa-history"></i> Recent Activity</h3><div class="activity-list">' + activityHtml + '</div></div></div>';
+        '<div class="chart-card"><h3><i class="fas fa-history"></i> Recent Activity</h3><div class="activity-list">' + activityHtml + '</div></div>' +
+    '</div>';
 
     Object.values(chartInstances).forEach(function(c) { c.destroy(); });
     chartInstances = {};
 
+    // ─── Theme-aware chart colours ───
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var cssVar = function(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+    var chartText = cssVar('--text-muted') || '#9898ad';
+    var chartTextStrong = cssVar('--text') || '#1a1a2e';
+    var chartBorder = cssVar('--bg-card') || '#ffffff';
+    var chartGrid = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+    var isSmall = window.innerWidth <= 640;
+    var chartAccent = cssVar('--accent') || '#9E2A3A';
+    var chartInk = cssVar('--text') || '#0B0B0C';
+    function toRgba(hex, alpha) {
+        hex = String(hex).replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(function(c) { return c + c; }).join('');
+        var n = parseInt(hex, 16);
+        return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+    }
+
     // ─── Custom tooltip style ───
     var tooltipStyle = {
-        backgroundColor: '#1a1a2e',
-        titleColor: '#fff',
-        bodyColor: '#e0e0ff',
-        borderColor: 'rgba(108,92,231,0.3)',
+        backgroundColor: '#0B0B0C',
+        titleColor: '#F4F1EA',
+        bodyColor: '#D6D1C7',
+        borderColor: toRgba(chartAccent, 0.5),
         borderWidth: 1,
         cornerRadius: 10,
         padding: 14,
@@ -64,19 +98,19 @@ async function loadDashboard() {
     // ─── Fee Collection — Gradient Bar Chart ───
     if (charts.feeData && charts.feeData.length) {
         var feeCtx = $('feeChart').getContext('2d');
-        var greenGrad = feeCtx.createLinearGradient(0, 0, 0, 300);
-        greenGrad.addColorStop(0, 'rgba(0,184,148,0.9)');
-        greenGrad.addColorStop(1, 'rgba(0,184,148,0.25)');
-        var redGrad = feeCtx.createLinearGradient(0, 0, 0, 300);
-        redGrad.addColorStop(0, 'rgba(231,76,60,0.85)');
-        redGrad.addColorStop(1, 'rgba(231,76,60,0.2)');
+        var accentGrad = feeCtx.createLinearGradient(0, 0, 0, 300);
+        accentGrad.addColorStop(0, toRgba(chartAccent, 0.95));
+        accentGrad.addColorStop(1, toRgba(chartAccent, 0.35));
+        var inkGrad = feeCtx.createLinearGradient(0, 0, 0, 300);
+        inkGrad.addColorStop(0, toRgba(chartInk, 0.82));
+        inkGrad.addColorStop(1, toRgba(chartInk, 0.22));
         chartInstances.fee = new Chart(feeCtx, {
             type: 'bar',
             data: {
                 labels: charts.feeData.map(function(d){return d.Month}),
                 datasets: [
-                    { label: 'Collected', data: charts.feeData.map(function(d){return d.collected}), backgroundColor: greenGrad, borderColor: 'rgba(0,184,148,0.8)', borderWidth: 1, borderRadius: 10, borderSkipped: false, barPercentage: 0.55, categoryPercentage: 0.7 },
-                    { label: 'Pending', data: charts.feeData.map(function(d){return d.pending}), backgroundColor: redGrad, borderColor: 'rgba(231,76,60,0.6)', borderWidth: 1, borderRadius: 10, borderSkipped: false, barPercentage: 0.55, categoryPercentage: 0.7 }
+                    { label: 'Collected', data: charts.feeData.map(function(d){return Number(d.collected) || 0}), backgroundColor: accentGrad, borderColor: chartAccent, borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.55, categoryPercentage: 0.7 },
+                    { label: 'Pending', data: charts.feeData.map(function(d){return Number(d.pending) || 0}), backgroundColor: inkGrad, borderColor: chartInk, borderWidth: 1, borderRadius: 3, borderSkipped: false, barPercentage: 0.55, categoryPercentage: 0.7 }
                 ]
             },
             options: {
@@ -84,80 +118,21 @@ async function loadDashboard() {
                 animation: { duration: 1200, easing: 'easeOutQuart' },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { position: 'top', align: 'end', labels: { color: '#5a5a7a', font: { family: 'Inter', weight: '700', size: 11 }, padding: 20, usePointStyle: true, pointStyle: 'rectRounded' } },
+                    legend: { position: 'top', align: 'end', labels: { color: chartText, font: { family: 'Inter', weight: '700', size: 11 }, padding: 20, usePointStyle: true, pointStyle: 'rectRounded' } },
                     tooltip: tooltipStyle
                 },
                 scales: {
-                    x: { ticks: { color: '#9898ad', font: { family: 'Inter', weight: '600', size: 11 } }, grid: { display: false }, border: { display: false } },
-                    y: { ticks: { color: '#9898ad', font: { family: 'Inter', size: 11 }, callback: function(v){return '\u20B9'+v.toLocaleString('en-IN')} }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } }
+                    x: { ticks: { color: chartText, font: { family: 'Inter', weight: '600', size: 11 } }, grid: { display: false }, border: { display: false } },
+                    y: { ticks: { color: chartText, font: { family: 'Inter', size: 11 }, callback: function(v){return '\u20B9'+v.toLocaleString('en-IN')} }, grid: { color: chartGrid, drawBorder: false }, border: { display: false } }
                 }
             }
         });
     }
 
-    // ─── Attendance Trend — Area Line Chart ───
-    (function(){
-        var attCtx = $('attendanceChart');
-        if(!attCtx) return;
-        attCtx = attCtx.getContext('2d');
-        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var now = new Date();
-        var labels = [];
-        var attData = [];
-        for(var i=5;i>=0;i--){
-            var m = new Date(now.getFullYear(), now.getMonth()-i, 1);
-            labels.push(months[m.getMonth()]);
-            attData.push(Math.floor(60 + Math.random()*35));
-        }
-        attData[attData.length-1] = stats.attendancePercentage || 75;
-        var purpleGrad = attCtx.createLinearGradient(0, 0, 0, 280);
-        purpleGrad.addColorStop(0, 'rgba(108,92,231,0.3)');
-        purpleGrad.addColorStop(0.5, 'rgba(108,92,231,0.08)');
-        purpleGrad.addColorStop(1, 'rgba(108,92,231,0.0)');
-        chartInstances.att = new Chart(attCtx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Attendance %',
-                    data: attData,
-                    borderColor: '#6c5ce7',
-                    backgroundColor: purpleGrad,
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#6c5ce7',
-                    pointBorderWidth: 2.5,
-                    pointHoverRadius: 8,
-                    pointHoverBackgroundColor: '#6c5ce7',
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 3
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                animation: { duration: 1500, easing: 'easeOutQuart' },
-                interaction: { mode: 'nearest', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: Object.assign({}, tooltipStyle, {
-                        callbacks: { label: function(ctx){return 'Attendance: ' + ctx.parsed.y + '%'} }
-                    })
-                },
-                scales: {
-                    x: { ticks: { color: '#9898ad', font: { family: 'Inter', weight: '600', size: 11 } }, grid: { display: false }, border: { display: false } },
-                    y: { min: 0, max: 100, ticks: { color: '#9898ad', font: { size: 11 }, stepSize: 25, callback: function(v){return v+'%'} }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } }
-                }
-            }
-        });
-    })();
-
     // ─── Class Distribution — Doughnut with Center Text ───
     if (charts.classDistribution && charts.classDistribution.length) {
-        var doughColors = ['#6c5ce7','#00b894','#e74c3c','#f39c12','#0984e3','#a29bfe','#e84393','#00cec9','#fd79a8','#fdcb6e','#55efc4'];
-        var totalStudents = charts.classDistribution.reduce(function(s,d){return s+d.count},0);
+        var doughColors = isDark ? ['#B8404F','#F4F1EA','#60A5FA','#34D399','#C4B5FD','#F472B6','#22D3EE','#67E8F9','#A3E635','#E08A96','#94A3B8','#D8B4FE'] : ['#9E2A3A','#0B0B0C','#1D4ED8','#0F7A4D','#6D28D9','#BE185D','#0891B2','#0E7490','#4D7C0F','#C25A6A','#334155','#7E22CE'];
+        var totalStudents = charts.classDistribution.reduce(function(s,d){return s + (Number(d.count) || 0)},0);
         var centerTextPlugin = {
             id: 'centerText',
             afterDraw: function(chart) {
@@ -168,10 +143,10 @@ async function loadDashboard() {
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.font = '900 28px Inter';
-                ctx.fillStyle = '#1a1a2e';
+                ctx.fillStyle = chartTextStrong;
                 ctx.fillText(totalStudents, cX, cY - 8);
                 ctx.font = '600 11px Inter';
-                ctx.fillStyle = '#9898ad';
+                ctx.fillStyle = chartText;
                 ctx.fillText('STUDENTS', cX, cY + 16);
                 ctx.restore();
             }
@@ -179,13 +154,13 @@ async function loadDashboard() {
         chartInstances.cls = new Chart($('classChart'), {
             type: 'doughnut',
             data: {
-                labels: charts.classDistribution.map(function(d){return 'Class ' + d.Class}),
+                labels: charts.classDistribution.map(function(d){return 'Class ' + d.Class + ' (' + (Number(d.count) || 0) + ')';}),
                 datasets: [{
-                    data: charts.classDistribution.map(function(d){return d.count}),
+                    data: charts.classDistribution.map(function(d){return Number(d.count) || 0}),
                     backgroundColor: doughColors,
                     borderWidth: 3,
-                    borderColor: '#ffffff',
-                    hoverBorderColor: '#ffffff',
+                    borderColor: chartBorder,
+                    hoverBorderColor: chartBorder,
                     hoverOffset: 8,
                     spacing: 2
                 }]
@@ -195,7 +170,7 @@ async function loadDashboard() {
                 cutout: '68%',
                 animation: { animateRotate: true, duration: 1400, easing: 'easeOutQuart' },
                 plugins: {
-                    legend: { position: 'right', labels: { color: '#5a5a7a', font: { family: 'Inter', weight: '700', size: 11 }, padding: 16, usePointStyle: true, pointStyle: 'circle' } },
+                    legend: { position: isSmall ? 'bottom' : 'right', labels: { color: chartText, font: { family: 'Inter', weight: '700', size: isSmall ? 10 : 11 }, padding: isSmall ? 10 : 16, usePointStyle: true, pointStyle: 'circle' } },
                     tooltip: tooltipStyle
                 }
             },
@@ -229,14 +204,14 @@ async function loadStudentDashboard() {
     var testCards = data.tests.length ? data.tests.map(function(t) {
         var d = new Date(t.TestDate);
         return '<div class="upcoming-item"><div class="upcoming-date"><span class="day">' + d.getDate() + '</span><span class="month">' + d.toLocaleString("en",{month:"short"}) + '</span></div><div class="upcoming-info"><h4>' + t.TestName + '</h4><p>' + (t.Subject||'') + ' &bull; Max: ' + t.MaximumMarks + ' &bull; ' + (t.Duration||'') + '</p></div></div>';
-    }).join('') : '<p style="color:var(--text-muted);padding:12px">No upcoming tests</p>';
+    }).join('') : '<div class="empty-state" style="padding:24px 12px"><i class="fas fa-clipboard-list" aria-hidden="true"></i><p>No upcoming tests</p></div>';
 
     var hwCards = data.homework.length ? data.homework.map(function(h) {
         return '<div class="upcoming-item"><div class="upcoming-date" style="background:rgba(0,180,216,0.1);border-color:var(--info)"><span class="day" style="color:var(--info)"><i class="fas fa-book"></i></span></div><div class="upcoming-info"><h4>' + h.Title + '</h4><p>' + (h.Subject||'') + ' &bull; Due: ' + formatDate(h.DueDate) + '</p></div></div>';
-    }).join('') : '<p style="color:var(--text-muted);padding:12px">No pending homework</p>';
+    }).join('') : '<div class="empty-state" style="padding:24px 12px"><i class="fas fa-book-open" aria-hidden="true"></i><p>No pending homework</p></div>';
 
     var iconMap = {attendance:'calendar-check',homework:'book',test:'clipboard-list',notice:'bullhorn',result:'chart-bar',fee:'rupee-sign'};
-    var colorMap = {attendance:'#00c9a7',homework:'#00b4d8',test:'#ffc107',notice:'#6c63ff',result:'#ff9f43',fee:'#ff6b6b'};
+    var colorMap = {attendance:'#0F7A4D',homework:'#0891B2',test:'#9E2A3A',notice:'#6D28D9',result:'#B8404F',fee:'#BE185D'};
     var notifItems = '';
     if (Array.isArray(notifs) && notifs.length) {
         notifItems = notifs.slice(0,20).map(function(n) {
@@ -254,7 +229,7 @@ async function loadStudentDashboard() {
     }
 
     $('contentArea').innerHTML =
-    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,rgba(108,99,255,0.13),rgba(0,180,216,0.07));border:1px solid rgba(108,99,255,0.27);border-radius:var(--radius)">' +
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding:20px;background:var(--accent-bg);border:1.5px solid var(--line);border-radius:var(--radius);box-shadow:var(--hard-sm)">' +
         '<div style="width:60px;height:60px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white">' + (s.FullName||'S').charAt(0) + '</div>' +
         '<div style="flex:1"><h2 style="margin:0;font-size:1.3rem">Welcome, ' + (s.FullName||'Student') + '!</h2>' +
         '<p style="margin:4px 0 0;color:var(--text-muted)">Class ' + (s.Class||'-') + ' &bull; ' + (s.BatchName||'-') + ' &bull; Roll #' + (s.StudentId||'') + '</p></div>' +
@@ -263,8 +238,8 @@ async function loadStudentDashboard() {
             (unread > 0 ? '<span style="position:absolute;top:2px;right:4px;background:var(--danger);color:white;font-size:0.65rem;padding:1px 5px;border-radius:10px;font-weight:700">' + unread + '</span>' : '') +
         '</div>' +
     '</div>' +
-    '<div id="studentNotifsPanel" style="display:none;margin-bottom:24px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card-bg);overflow:hidden">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(108,99,255,0.08),transparent)">' +
+    '<div id="studentNotifsPanel" style="display:none;margin-bottom:24px;border-radius:var(--radius);border:1.5px solid var(--line);background:var(--card-bg);overflow:hidden;box-shadow:var(--hard-sm)">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--accent-bg)">' +
             '<h3 style="margin:0;font-size:1rem"><i class="fas fa-bell" style="color:var(--accent)"></i> Notifications (' + unread + ' unread)</h3>' +
             (unread > 0 ? '<button onclick="markAllNotifsRead()" style="background:var(--accent);color:white;border:none;padding:5px 14px;border-radius:var(--radius);cursor:pointer;font-size:0.75rem;font-weight:600">Mark all read</button>' : '') +
         '</div>' +
@@ -294,9 +269,10 @@ function toggleStudentNotifs() {
 }
 
 async function markAllNotifsRead() {
-    await api('/api/notifications/' + currentUser.id + '/readall', 'PUT');
+    await put('/api/notifications/' + currentUser.id + '/readall', {});
     showToast('All notifications marked as read', 'success');
     loadStudentDashboard();
+    loadNotifications();
 }
 
 function timeAgo(dateStr) {

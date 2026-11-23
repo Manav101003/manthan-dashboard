@@ -110,6 +110,19 @@ class StudentController {
             res.status(500).json({ success: false, error: e.message });
         }
     }
+
+    static async updatePassword(req, res) {
+        const { password } = req.body;
+        if (!password || !String(password).trim()) {
+            return res.status(400).json({ success: false, error: 'Password cannot be empty' });
+        }
+        try {
+            await StudentModel.updatePassword(req.params.id, String(password).trim());
+            res.json({ success: true, message: 'Password updated successfully' });
+        } catch (e) {
+            res.status(500).json({ success: false, error: e.message });
+        }
+    }
 }
 
 module.exports = StudentController;

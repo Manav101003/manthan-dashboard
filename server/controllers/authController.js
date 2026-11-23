@@ -38,6 +38,20 @@ class AuthController {
             res.status(500).json({ success: false, message: e.message });
         }
     }
+
+    static async changePassword(req, res) {
+        const { newPassword } = req.body;
+        if (!newPassword || !String(newPassword).trim()) {
+            return res.status(400).json({ success: false, message: 'New password cannot be empty' });
+        }
+        try {
+            const adminId = (req.session && req.session.user && req.session.user.id) || 1;
+            await AdminModel.updatePassword(adminId, String(newPassword).trim());
+            res.json({ success: true, message: 'Password updated successfully' });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    }
 }
 
 module.exports = AuthController;

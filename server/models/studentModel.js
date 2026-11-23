@@ -81,24 +81,54 @@ class StudentModel {
     }
 
     static async update(id, data, primaryBatch) {
+        if (data.Password && String(data.Password).trim()) {
+            await pool.query(
+                `UPDATE students
+                 SET FullName=$1,FatherName=$2,MotherName=$3,StudentPhone=$4,ParentPhone=$5,Address=$6,Class=$7,DateOfBirth=$8,BatchId=$9,Gender=$10,Status=$11,Password=$12
+                 WHERE StudentId=$13`,
+                [
+                    data.FullName,
+                    data.FatherName,
+                    data.MotherName,
+                    data.StudentPhone,
+                    data.ParentPhone,
+                    data.Address,
+                    data.Class,
+                    data.DateOfBirth,
+                    primaryBatch,
+                    data.Gender,
+                    data.Status || 'Active',
+                    String(data.Password).trim(),
+                    id
+                ]
+            );
+        } else {
+            await pool.query(
+                `UPDATE students
+                 SET FullName=$1,FatherName=$2,MotherName=$3,StudentPhone=$4,ParentPhone=$5,Address=$6,Class=$7,DateOfBirth=$8,BatchId=$9,Gender=$10,Status=$11
+                 WHERE StudentId=$12`,
+                [
+                    data.FullName,
+                    data.FatherName,
+                    data.MotherName,
+                    data.StudentPhone,
+                    data.ParentPhone,
+                    data.Address,
+                    data.Class,
+                    data.DateOfBirth,
+                    primaryBatch,
+                    data.Gender,
+                    data.Status || 'Active',
+                    id
+                ]
+            );
+        }
+    }
+
+    static async updatePassword(id, newPassword) {
         await pool.query(
-            `UPDATE students
-             SET FullName=$1,FatherName=$2,MotherName=$3,StudentPhone=$4,ParentPhone=$5,Address=$6,Class=$7,DateOfBirth=$8,BatchId=$9,Gender=$10,Status=$11
-             WHERE StudentId=$12`,
-            [
-                data.FullName,
-                data.FatherName,
-                data.MotherName,
-                data.StudentPhone,
-                data.ParentPhone,
-                data.Address,
-                data.Class,
-                data.DateOfBirth,
-                primaryBatch,
-                data.Gender,
-                data.Status || 'Active',
-                id
-            ]
+            'UPDATE students SET Password=$1 WHERE StudentId=$2',
+            [String(newPassword).trim(), id]
         );
     }
 

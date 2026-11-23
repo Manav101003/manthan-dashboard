@@ -862,6 +862,7 @@ async function loadStudents() {
     var rows = list.map(function(s, i) {
         var actionBtns = '<button class="action-btn" title="View" onclick="viewStudent(' + s.StudentId + ')"><i class="fas fa-eye"></i></button>';
         if (currentUser.role === 'admin') {
+            actionBtns += '<button class="action-btn" title="Change Password" style="color:var(--accent)" onclick="promptChangeStudentPassword(' + s.StudentId + ',\'' + (s.FullName||'').replace(/'/g, "\\'") + '\')"><i class="fas fa-key"></i></button>';
             actionBtns += '<button class="action-btn" title="Edit" onclick="editStudentById(' + s.StudentId + ')"><i class="fas fa-edit"></i></button>';
             actionBtns += '<button class="action-btn delete" title="Delete" onclick="deleteStudent(' + s.StudentId + ')"><i class="fas fa-trash"></i></button>';
         }
@@ -894,7 +895,7 @@ async function showStudentForm(s) {
         '<div class="form-row"><div class="form-group"><label>Student Phone</label><input id="sf_phone" value="' + (s ? s.StudentPhone||'' : '') + '"></div><div class="form-group"><label>Parent Phone</label><input id="sf_pphone" value="' + (s ? s.ParentPhone||'' : '') + '"></div></div>' +
         '<div class="form-row"><div class="form-group"><label>Date of Birth</label><input type="date" id="sf_dob" value="' + (s && s.DateOfBirth ? s.DateOfBirth.split('T')[0] : '') + '"></div><div class="form-group"><label>Gender</label><select id="sf_gender"><option ' + (s && s.Gender==='Male'?'selected':'') + '>Male</option><option ' + (s && s.Gender==='Female'?'selected':'') + '>Female</option><option ' + (s && s.Gender==='Other'?'selected':'') + '>Other</option></select></div></div>' +
         '<div class="form-row"><div class="form-group"><label>Username *</label><input id="sf_user" value="' + (s ? s.Username||'' : '') + '" required></div><div class="form-group"><label>Address</label><input id="sf_addr" value="' + (s ? s.Address||'' : '') + '"></div></div>' +
-        (s ? '' : '<div class="form-group"><label>Password</label><input id="sf_pass" value="student123"></div>') +
+        '<div class="form-group"><label>' + (s ? 'Change Password (leave blank to keep current)' : 'Password') + '</label><input id="sf_pass" ' + (s ? 'placeholder="Leave blank to keep unchanged"' : 'value="student123"') + '></div>' +
         '<div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary">' + (s ? 'Update' : 'Add') + ' Student</button></div></form>');
 
     // Store existing batch IDs / subjects if editing
@@ -988,7 +989,11 @@ async function saveStudent(e, id) {
     if (!selectedSubjects.length) { toast('Select at least one subject', 'error'); return; }
 
     var data = { FullName: $('sf_name').value, Class: cls, FatherName: $('sf_father').value, MotherName: $('sf_mother').value, StudentPhone: $('sf_phone').value, ParentPhone: $('sf_pphone').value, DateOfBirth: $('sf_dob').value, Gender: $('sf_gender').value, Username: $('sf_user').value, Address: $('sf_addr').value, Subjects: selectedSubjects, BatchId: $('sf_batch') ? ($('sf_batch').value || null) : null };
-    if (!id && $('sf_pass')) data.Password = $('sf_pass').value || 'student123';
+    if ($('sf_pass') && $('sf_pass').value.trim()) {
+        data.Password = $('sf_pass').value.trim();
+    } else if (!id) {
+        data.Password = 'student123';
+    }
 
     var r = id ? await put('/api/students/' + id, data) : await post('/api/students', data);
     if (r.success) { toast(id ? 'Student updated' : 'Student added'); closeModal(); loadStudents(); }
@@ -1053,6 +1058,27 @@ async function exportStudentsCsv() {
     a.remove();
     setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
     toast('Students exported');
+}
+
+function promptChangeStudentPassword(id, name) {
+    openModal('<div class="modal-header"><h2><i class="fas fa-key" style="color:var(--accent)"></i> Change Password for ' + name + '</h2><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></div>' +
+        '<form class="modal-form" onsubmit="saveStudentPassword(event,' + id + ')">' +
+        '<div class="form-group"><label>New Password *</label><input type="text" id="csp_pass" value="student123" required>' +
+        '<small style="color:var(--text-muted);font-size:.75rem;display:block;margin-top:6px">Immediately updates student login credentials in database without student consent or notification.</small></div>' +
+        '<div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Password</button></div></form>');
+}
+
+async function saveStudentPassword(e, id) {
+    e.preventDefault();
+    var pass = $('csp_pass').value;
+    if (!pass || !pass.trim()) { toast('Password cannot be empty', 'error'); return; }
+    var r = await put('/api/students/' + id + '/password', { password: pass.trim() });
+    if (r.success) {
+        toast('Student password updated successfully');
+        closeModal();
+    } else {
+        toast(r.error || 'Failed to update password', 'error');
+    }
 }
 
 
@@ -2475,7 +2501,34 @@ async function loadSettings() {
                     <p style="color:var(--text-muted);font-size:.8rem;margin-top:12px">Students see this QR on their Pay Fees page. Upload a screenshot of the QR from GPay/PhonePe, and optionally add your UPI ID so the pay buttons work.</p>
                 </div>
             </div>
+        </div>
+        <div class="data-table-container" style="padding:24px;margin-top:20px">
+            <h3 style="margin-bottom:16px"><i class="fas fa-lock" style="color:var(--accent)"></i> Change Admin Password</h3>
+            <form onsubmit="saveAdminPassword(event)">
+                <div class="modal-form">
+                    <div class="form-group">
+                        <label>New Admin Password</label>
+                        <input type="password" id="set_admin_pass" placeholder="Enter new password" required>
+                    </div>
+                </div>
+                <div class="modal-actions" style="justify-content:flex-start">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Update Password</button>
+                </div>
+            </form>
         </div>`;
+}
+
+async function saveAdminPassword(e) {
+    e.preventDefault();
+    const pass = $('set_admin_pass').value;
+    if (!pass || !pass.trim()) return toast('Password cannot be empty', 'error');
+    const r = await post('/api/change-password', { newPassword: pass.trim() });
+    if (r.success) {
+        toast('Admin password updated successfully');
+        $('set_admin_pass').value = '';
+    } else {
+        toast(r.message || r.error || 'Failed to update password', 'error');
+    }
 }
 
 async function saveInstituteSettings(e) {

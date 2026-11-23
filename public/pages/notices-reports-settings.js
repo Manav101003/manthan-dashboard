@@ -151,7 +151,34 @@ async function loadSettings() {
                     <p style="color:var(--text-muted);font-size:.8rem;margin-top:12px">Students see this QR on their Pay Fees page. Upload a screenshot of the QR from GPay/PhonePe, and optionally add your UPI ID so the pay buttons work.</p>
                 </div>
             </div>
+        </div>
+        <div class="data-table-container" style="padding:24px;margin-top:20px">
+            <h3 style="margin-bottom:16px"><i class="fas fa-lock" style="color:var(--accent)"></i> Change Admin Password</h3>
+            <form onsubmit="saveAdminPassword(event)">
+                <div class="modal-form">
+                    <div class="form-group">
+                        <label>New Admin Password</label>
+                        <input type="password" id="set_admin_pass" placeholder="Enter new password" required>
+                    </div>
+                </div>
+                <div class="modal-actions" style="justify-content:flex-start">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Update Password</button>
+                </div>
+            </form>
         </div>`;
+}
+
+async function saveAdminPassword(e) {
+    e.preventDefault();
+    const pass = $('set_admin_pass').value;
+    if (!pass || !pass.trim()) return toast('Password cannot be empty', 'error');
+    const r = await post('/api/change-password', { newPassword: pass.trim() });
+    if (r.success) {
+        toast('Admin password updated successfully');
+        $('set_admin_pass').value = '';
+    } else {
+        toast(r.message || r.error || 'Failed to update password', 'error');
+    }
 }
 
 async function saveInstituteSettings(e) {

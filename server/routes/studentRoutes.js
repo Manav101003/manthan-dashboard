@@ -8,6 +8,7 @@ router.get('/students/:id/batches', StudentController.getStudentBatches);
 router.get('/students/:id', StudentController.getById);
 router.post('/students', StudentController.create);
 router.put('/students/:id', StudentController.update);
+router.put('/students/:id/password', StudentController.updatePassword);
 router.delete('/students/:id', StudentController.delete);
 
 module.exports = router;
